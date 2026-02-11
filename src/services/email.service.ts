@@ -1,15 +1,15 @@
 import nodemailer from 'nodemailer';
 import Invitation from '../models/Invitation.model';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
 export const sendInvitationEmail = async (invitationId: string) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
   const invitation = await Invitation.findById(invitationId);
   if (!invitation) throw new Error('Invitation not found');
 
