@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 import AILog from '../models/AILog.model';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');

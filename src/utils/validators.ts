@@ -31,10 +31,15 @@ export const validateInvitation = Joi.object({
         musicAutoPlay: Joi.boolean().default(true),
         songUrl: Joi.string().uri().optional()
     }).optional(),
-    carouselImages: Joi.array().items(Joi.object({
-        url: Joi.string().required(),
-        caption: Joi.string().optional().allow(''),
-        displayOrder: Joi.number().optional()
-    })).optional(),
+    carouselImages: Joi.array().items(
+        Joi.alternatives().try(
+            Joi.object({
+                url: Joi.string().required(),
+                caption: Joi.string().optional().allow(''),
+                displayOrder: Joi.number().optional()
+            }),
+            Joi.string()
+        )
+    ).optional(),
     images: Joi.array().items(Joi.string()).optional()  // Frontend alias for carouselImages
 });

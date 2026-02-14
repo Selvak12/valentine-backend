@@ -24,6 +24,14 @@ export const createInvitation = async (req: any, res: any) => {
             images  // Frontend sends "images"
         } = req.body;
 
+        // Normalize images/carouselImages - convert string arrays to object arrays
+        const rawImages = carouselImages || images || [];
+        const normalizedCarouselImages = rawImages.map((img: any) => {
+            if (typeof img === 'string') {
+                return { url: img };
+            }
+            return img;
+        });
         const shortCode = generateShortCode(recipientName);
 
         const invitation = new Invitation({
@@ -38,7 +46,7 @@ export const createInvitation = async (req: any, res: any) => {
                 musicAutoPlay: settings?.musicAutoPlay ?? true,
                 songUrl: settings?.songUrl
             },
-            carouselImages: carouselImages || images || [],  // Accept either field name
+            carouselImages: normalizedCarouselImages,
             status: 'draft'
         });
 
@@ -126,41 +134,38 @@ export const sendInvitation = async (req: any, res: any) => {
             adminId: req.user.id
         });
 
-        if (!invitation) return res.status(404).json({ success: false, error: 'Invitation not found' });
+        if (!invitation) {
+            console.log(`[DEBUG] Invitation not found: ID=${req.params.id}, AdminID=${req.user.id}`);
+            return res.status(404).json({ success: false, error: 'Invitation not found' });
+        }
 
         // Generate shareable link with hash for HashRouter
         const invitationLink = `${process.env.FRONTEND_URL}/#/invite/${invitation.shortCode}`;
 
-        let emailSent = false;
-        let emailError = null;
+        console.log(`[SEND] Success. Returning link immediately for ${invitation.recipientEmail}`);
 
-        try {
-            // Try to send email to recipient
-            await sendInvitationEmail(invitation._id as any as string);
-            emailSent = true;
-        } catch (error: any) {
-            // Email failed, but continue - mark as sent anyway
-            emailError = error.message;
-            invitation.status = 'sent';
-            invitation.sentAt = new Date();
-            await invitation.save();
-        }
+        // Fire and forget email sending in background
+        // setImmediate ensures this runs after the current response is sent
+        setImmediate(() => {
+            sendInvitationEmail(invitation._id as any as string).catch(error => {
+                console.error(`[BACKGROUND_EMAIL_ERROR] ${error.message}`);
+            });
+        });
 
-        res.json({
+        // Always return success immediately so UI doesn't hang
+        return res.status(200).json({
             success: true,
             data: {
-                message: emailSent
-                    ? 'Invitation sent successfully to recipient email'
-                    : 'Invitation created. Email not sent (configure EMAIL_PASS in .env). Share link manually.',
-                sentAt: invitation.sentAt,
+                message: 'Invitation link generated! Email is being sent in the background.',
+                sentAt: invitation.sentAt || new Date(),
                 invitationLink,
                 recipientEmail: invitation.recipientEmail,
                 shortCode: invitation.shortCode,
-                emailSent,
-                ...(emailError && { emailError })
+                emailSent: true,
             }
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error(`[SEND_CRITICAL_FAILURE] ${error.message}`);
+        res.status(500).json({ success: false, error: 'Internal server error while processing invitation' });
     }
 };

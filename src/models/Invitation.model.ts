@@ -74,6 +74,6 @@ const InvitationSchema: Schema = new Schema({
 
 InvitationSchema.index({ adminId: 1 });
 InvitationSchema.index({ status: 1 });
-InvitationSchema.index({ shortCode: 1 });
+// InvitationSchema.index({ shortCode: 1 }); // Already unique: true
 
 export default mongoose.model<IInvitationDocument>('Invitation', InvitationSchema);
